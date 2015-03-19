@@ -1,0 +1,235 @@
+---
+title: "Benchmarking"
+author: "Aleksandrina Goeva"
+output: html_document
+---
+
+A microbenchmark is a measurement of the performance of a very small piece of code. The best tool for microbenchmarking in R is the `microbenchmark` package. It provides very precise timings, making it possible to compare operations that only take a tiny amount of time.
+
+```{r, eval=FALSE,tidy=FALSE}
+install.packages('microbenchmark')
+```
+
+
+## Row and Column Means
+
+When we store our data in a `matrix` or a `data.frame`, sometimes we are interested in the summary statistics for the rows or the columns of our data. For example, we might be interested in computing the mean of the rows or the columns. We can get the means using a `for` loop or using the `apply` function. There's a third option, we could also use the `rowMeans` and the `colMeans` base functions. But which option is the fastest? We can figure this out using the `microbenchmark` package. 
+
+```{r}
+library(microbenchmark)
+```
+
+First we are going to create a data matrix
+
+```{r}
+m <- 1000
+n <- 1000
+dat <- matrix(rnorm(m*n),nrow=m,ncol=n)
+```
+
+First for the row means
+
+```{r}
+op_rowmean <- microbenchmark(
+  for_loop=({res <- rep(NA,dim(dat)[1])
+            for(i in 1:dim(dat)[1]){
+              res[i] = mean(dat[i,])
+            }
+  }),
+  apply=apply(dat,1,mean),
+  rowMeans=rowMeans(dat),
+  times=100
+  )
+```
+
+In `microbenchmark()` first we put in a list the expressions that we want to compare. In this case, we have  
+* `for_loop`: computing the row means using a for loop
+* `apply`: using the `apply` function over the rows to compute the mean
+* `rowMeans`: using the `rowMeans` function to get the row means.
+
+By default, `microbenchmark()` runs each expression 100 times (controlled by the `times` parameter). It summarises the results with a minimum (`min`), lower quartile (`lq`), `median`, upper quartile (`uq`), and maximum (`max`). Focus on the `median`, and use the upper and lower quartiles (`lq` and `uq`) to get a feel for the variability.
+
+```{r}
+print(op_rowmean)
+```
+
+We can also use boxplots to visualize the results
+
+```{r}
+boxplot(op_rowmean)
+```
+
+Clearly, the `rowMeans` function is the fastest way to do it. We can do the same comparison for the column means.
+
+```{r}
+op_colmean <- microbenchmark(
+  for_loop=({res <- rep(NA,dim(dat)[2])
+             for(i in 1:dim(dat)[2]){
+               res[i] = mean(dat[,i])
+             }
+  }),
+  apply=apply(dat,2,mean),
+  colMeans=colMeans(dat),
+  times=100
+)
+# what's faster?
+print(op_colmean)
+boxplot(op_colmean)
+```
+
+Not surprisingly, the `colMeans` function is the fastest way to do it.
+
+## Matrix Statistics
+
+The base R functions only include `rowMeans` and `colMeans`. What if we want to calculate other summary statistics like the median, or the standard deviation? 
+
+We could use the `matrixStats` package. This package includes more functions to calculate row and column statistics.
+```{r,eval=FALSE, tidy=FALSE}
+install.packages("matrixStats")
+```
+
+The package `matrixStats` includes function to calculate medians, minimums, maximums, standard deviations among other summary statistics.
+
+```{r}
+library(matrixStats)
+```
+
+As before, using the `row` and `col` functions is faster than using `for` loops or the `apply` function.
+
+
+### Median
+```{r}
+op_rowmedian <- microbenchmark(
+  for_loop=({res <- rep(NA,dim(dat)[1])
+             for(i in 1:dim(dat)[1]){
+               res[i] = median(dat[i,])
+             }
+  }),
+  apply=apply(dat,1,median),
+  rowMedians=rowMedians(dat),
+  times=100
+)
+
+op_colmedian <- microbenchmark(
+  for_loop=({res <- rep(NA,dim(dat)[2])
+             for(i in 1:dim(dat)[2]){
+               res[i] = median(dat[,i])
+             }
+  }),
+  apply=apply(dat,2,median),
+  colMedians=colMedians(dat),
+  times=100
+)
+
+print(op_rowmedian)
+print(op_colmedian)
+
+par(mfrow=c(1,2))
+boxplot(op_rowmedian,main="Row Medians")
+boxplot(op_colmedian,main="Col Medians")
+par(mfrow=c(1,1))
+```
+
+### Standard Deviation
+
+```{r}
+op_rowsd <- microbenchmark(
+  for_loop=({res <- rep(NA,dim(dat)[1])
+             for(i in 1:dim(dat)[1]){
+               res[i] = sd(dat[i,])
+             }
+  }),
+  apply=apply(dat,1,sd),
+  rowSds=rowSds(dat),
+  times=100
+)
+
+op_colsd <- microbenchmark(
+  for_loop=({res <- rep(NA,dim(dat)[2])
+             for(i in 1:dim(dat)[2]){
+               res[i] = sd(dat[,i])
+             }
+  }),
+  apply=apply(dat,2,sd),
+  colSds=colSds(dat),
+  times=100
+)
+
+print(op_rowsd)
+print(op_colsd)
+
+par(mfrow=c(1,2))
+boxplot(op_rowsd,main="Row Medians")
+boxplot(op_colsd,main="Col Medians")
+par(mfrow=c(1,1))
+```
+
+### Minimum
+```{r}
+op_rowmax <- microbenchmark(
+  for_loop=({res <- rep(NA,dim(dat)[1])
+             for(i in 1:dim(dat)[1]){
+               res[i] = max(dat[i,])
+             }
+  }),
+  apply=apply(dat,1,max),
+  rowMaxs=rowMaxs(dat),
+  times=100
+)
+
+
+op_colmax <- microbenchmark(
+  for_loop=({res <- rep(NA,dim(dat)[2])
+             for(i in 1:dim(dat)[2]){
+               res[i] = max(dat[,i])
+             }
+  }),
+  apply=apply(dat,2,max),
+  colMaxs=colMaxs(dat),
+  times=100
+)
+
+print(op_rowmax)
+print(op_colmax)
+
+par(mfrow=c(1,2))
+boxplot(op_rowmax,main="Row Medians")
+boxplot(op_colmax,main="Col Medians")
+par(mfrow=c(1,1))
+```
+
+### Maximum
+```{r}
+op_rowmin <- microbenchmark(
+  for_loop=({res <- rep(NA,dim(dat)[1])
+             for(i in 1:dim(dat)[1]){
+               res[i] = min(dat[i,])
+             }
+  }),
+  apply=apply(dat,1,min),
+  rowMins=rowMins(dat),
+  times=100
+)
+
+op_colmin <- microbenchmark(
+  for_loop=({res <- rep(NA,dim(dat)[2])
+             for(i in 1:dim(dat)[2]){
+               res[i] = min(dat[,i])
+             }
+  }),
+  apply=apply(dat,2,min),
+  colMins=colMins(dat),
+  times=100
+)
+
+
+print(op_rowmin)
+print(op_colmin)
+
+par(mfrow=c(1,2))
+boxplot(op_rowmin,main="Row Medians")
+boxplot(op_colmin,main="Col Medians")
+par(mfrow=c(1,1))
+```
+
+
